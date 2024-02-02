@@ -1,0 +1,1125 @@
+---
+title: |
+   |
+   |
+   | UNIVERSITÀ DEGLI STUDI DI PADOVA
+   | Dipartimento di Matematica
+   |
+   |
+   |
+   | “House Prices Prediction”
+   | Regression Model on Real Data
+   | 
+   |
+   |
+   | ![]("C:\Users\ASUS\Desktop\University_of_Padua_seal.svg.png")
+author: |
+ | Seyedehmoones Sheibani
+ | Nazli Hanifi
+ | Amirhosein Kalhor
+ |
+ | June 2023
+toc: true
+font: 12pt
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+\vspace\*{4cm}
+
+# 1 INTRODUCTION
+
+\vspace\*{1cm}
+
+The 'House Prices - Advanced Regression Techniques' dataset serves as the foundation for our analysis and predictive modeling task.
+This dataset comprises a collection of residential properties along with their corresponding sale prices.
+With a wide range of features capturing different aspects of the properties, this dataset offers a valuable opportunity to explore and understand the factors influencing house prices.
+Our objective is to develop a regression model that accurately predicts the sale prices based on the given set of features.
+By employing advanced regression techniques, we aim to uncover the underlying relationships between the independent variables (features) and the dependent variable (sale price), enabling us to gain insights into the housing market dynamics and provide reliable predictions.
+
+\vspace\*{0.5cm}
+
+In the first part, we prepare the data to perform analysis on the data, for example, we use the data cleaning technique and select the best features for analysis.
+The second part we start our exploratory analysis by visualization and quantifying the relationship between variables the relationships between the parameters.
+Then we answer the research questions by using statistical techniques such as ANOVA test, Bartlett test, and Regression.
+In the last part, the results are discussed.
+In the code, as the first steps we started importing some libraries and the dataset.
+And then we show the data dimensions.
+\vspace\*{1cm}
+
+```{r}
+library(dplyr)
+library(gplots)
+
+```
+  
+```{r}
+library(fastDummies)
+```
+  
+```{r}
+library(gplots)
+```
+    
+```{r}
+library(ggplot2)
+```
+   
+```{r}
+library(faraway)
+```
+   
+```{r}
+library(car)
+```
+   
+```{r}
+HP <- read.csv("train.csv")
+dim (HP)
+```
+
+# 2 PREPRATION OF THE DATASET
+
+### 2.1 Data cleaning and pre-processing
+
+We have information about features of the 1460
+houses that we want to estimate the price of other houses according to their features and prices.
+The dataset has 1460 rows and 81 columns which means we have 81 features to predict the SalePrice of the houses.
+
+\vspace\*{0.025cm}
+
+In our dataset, we have both numerical and categorical data and considering that numeric and categorical data cannot be compared, so we must separate these two categories to be able to perform data analysis well.
+After separating data we write a code for showing summary of the two types of data.
+
+```{r}
+num_cols <- HP %>%
+select_if(is.numeric)
+```
+
+```{r}
+cat_cols <- HP %>%
+select_if(is.character)
+```
+
+We have a lot of features (81 variables) so we need to decrease them into 10 variables.
+First, we will look at the null values in each feature.
+In the data analysis process, we detected missing values in the 'HP' dataset, which contain some information on house prices.
+By applying the is.na () function to the dataset. The code calculates the percentage of missing values in each column and presentes the results.
+Additionally, a summary of the dataset was generated to provide an overview of its descriptive statistics.
+The code also performed imputation for a subset of numerical columns called 'num_cols,' replacing missing values with column means.
+The number of missing values before and after imputation were computed to assess the effectiveness of the imputation process.
+There are four variables with more than 80 percent of their values as null: MiscFeature, Fence, PoolQC, alley.
+We will fill in the numerical ones with the mean of each column.
+
+\vspace\*{1cm}
+
+About numerical variable:
+
+```{r}
+null_perc <- colMeans(is.na(HP)) * 100
+num_cols <- apply(num_cols, 2, function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)
+})
+```
+
+Now we will analyze the categorical variables to see which ones have a natural value order and which ones don't and among the ones that do not have any natural order, which one is feasible for a dummy variable transformation.
+In our data analysis, we examined the presence of missing values in the 'HP' dataset, which contains information on house prices.
+The code colSums(is.na (HP)) was used to calculate the total number of missing values in each column of the dataset.
+We identified missing values as logical values (TRUE/FALSE).
+The colSums() function then summed up these logical values column-wise, providing the count of missing values in each column.
+This analysis helps us understand the extent of missing data and informs subsequent steps in our data preprocessing and imputation processes.
+
+Among the categorical variables the following have some sort of obvious natural ordering; Street, Alley, LotShape, Utilities, LandSlope, ExterQual, ExterCond, BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2, HeatingQC, CentralAir, KitchenQual, Functional, FireplaceQu, GarageFinish , GarageQual, Garagecond, PavedDrive, PoolQC, MiscFeature\*, Since MiscFeature importance is mostly captured by the numerical feature MiscVal we will not consider it.
+
+\vspace\*{1cm}
+
+About categorical variable:
+
+```{r}
+cat_cols[is.na(cat_cols)] = 'NE'
+unique(cat_cols$CentralAir)
+```
+
+The following code performs a series of transformations on the categorized columns in the "cat_cols" data set.
+The code converts categorical variables into numerical factors with ordered levels.
+Now we want to break down the code and provide a brief explanation for each step:
+
+This line converts the "GarageQual" column from a categorical variable to a numeric factor.
+The unique levels of the "GarageQual" column are used as levels for the factor, and the resulting factor is then coerced into a numeric representation.
+
+```{r}
+cat_cols$GarageQual <- as.numeric(factor(cat_cols$GarageQual, levels = unique(cat_cols$GarageQual), ordered = TRUE))
+```
+
+The code continues in a similar manner for other categorical columns such as "Alley", "LotShape", "Utilities", "LandSlope".
+Each column is converted into a numeric factor, specifying the levels and ordered flag where applicable.
+\vspace\*{4cm}
+
+This line retrieves the unique values present in the "ExterQual" column.
+It returns a vector containing the distinct categories or levels present in the column.
+
+```{r}
+unique(cat_cols$ExterQual)
+```
+
+This line creates a factor object from the "ExterQual" column.
+The levels of the factor are explicitly specified as "Ex", "Gd", "TA", and "Fa" in reversed order using the levels argument.
+The ordered = TRUE argument indicates that the levels have an natural ordering.
+as.numeric() converts the resulting factor into a numeric representation.
+This assigns numeric values to the categories based on their order in the factor levels.
+The highest level ("Ex") will be assigned the highest numeric value, followed by "Gd", "TA", and "Fa" in descending order.
+
+```{r}
+cat_cols$ExterQual = as.numeric(factor(cat_cols$ExterQual, levels = rev(c("Ex", "Gd", "TA", "Fa")), ordered = TRUE))
+```
+
+The code continues in a similar manner for other categorical columns such as " ExterCond, "," BsmtQual "," BsmtCond "," BsmtExposure "," BsmtFinType1", and so on.
+Each column is converted into a numeric factor, specifying the levels and ordered flag where applicable.
+
+The purpose of converting categorical variables into numeric factors with ordered levels is often to represent the ordinal nature of the categories.
+By assigning numeric values to the categories, you can capture the ordinal relationship between different levels when performing subsequent analysis or modeling tasks.
+
+We want to describe this code by explaining that we utilize the fastDummies library to generate dummy variables for selected categorical columns in the cat_cols dataset. In the dataset, there are data that are not in natural order, but they are an important feature. In these two lines of code, we added these data to our data with dummy variable.
+
+```{r}
+cat_cols = fastDummies::dummy_cols(cat_cols, select_columns = c("MSZoning", "Neighborhood", "BldgType", "HouseStyle", "SaleType", "SaleCondition"))
+```
+
+```{r}
+cat_cols =  cat_cols[, !(names(cat_cols) %in% c("MSZoning", "Neighborhood", "BldgType", "HouseStyle", "SaleType", "SaleCondition"))]
+```
+
+The purpose of this code is to convert categorical variables into a numerical representation using dummy variables. Dummy variables are binary indicators that represent the presence or absence of a particular category in a categorical variable. By creating dummy variables, the code enables the inclusion of categorical information in subsequent analysis or modeling tasks that require numerical input.
+
+
+In our data set, some features do not have a natural order and were not particularly important, so we manually removed them from the data. The updated cat_cols dataset, after removing these columns, is then used in combination with the num_cols dataset to create a final preprocessed dataset called PreProcessed_HP. Obviously, we can see the dimensions of this data. Additionally, you can mention that the code checks for missing values in PreProcessed_HP using the colSums(is.na(PreProcessed_HP)) statement and displays the resulting dataset.
+
+```{r}
+cat_cols = cat_cols[, !(names(cat_cols) %in% c("MiscFeature", "Fence", "GarageType", "Electrical", "Heating", "Foundation",     "MasVnrType", "Exterior2nd", "Exterior1st", "RoofMatl", "RoofStyle", "Condition2",  "Condition1", "LotConfig", "LandContour", "CentralAir"))]
+PreProcessed_HP = cbind(num_cols, cat_cols)
+dim(PreProcessed_HP)
+```
+
+The code aims to improve the quality and efficiency of subsequent analysis or modeling tasks.
+
+Furthermore, considering that we have a large number of features in PreProcessed_HP, we chose a subset of these features that covered a good variance which indicates the most information we need to get the best regression model.
+  
+```{r}
+semfin = read.csv("semfin.csv")
+```
+```{r}
+#computing the correlation OF VARIABLES:
+corrl = cor(semfin)
+hist(corrl)
+colnames(semfin)
+dim(semfin)
+```
+
+In this dataset, there are many correlated data which is not useful, because in the process, they give us similar predictions, so we consider those that are highly related which is useless.
+First, we check which features are correlated with the target so that we can choose the features that we want.
+In this code we show the dimension of semfin and we find the correlation with 'heatmap'. In fact, we considered the target as the selling price and then calculated the correlation of the target with the features and we put these features in to the 'highly_correlated_features' Finally, we entered these features to semfin in order to work with these features from now on. Actually these characteristics are the characteristics that we received in the previous part because they covered a good variance, and now we have separated the ones that had a good correlation with the target and put them in the collection named 'high_cor_semfin'
+```{r}
+heatmap.2(cor(semfin), Rowv = FALSE, Colv = FALSE, dendrogram = "none",
+          cellnote = round(cor(semfin),2),
+          notecol = "black", key = FALSE, trace = 'none', margins = c(7,7), main = "binary variables heatmap")
+
+cor_target <- abs(cor(semfin)[, "SalePrice"])
+sorted_cor_target <- sort(cor_target, decreasing = TRUE)
+highly_correlated_features <- names(sorted_cor_target[sorted_cor_target > 0.4])
+high_cor_semfin = semfin[highly_correlated_features]
+```
+
+In the following section, among the features that exist in the high_cor_semfin , we will find those that are correlated with each other.
+```{r}
+feat = subset(high_cor_semfin, select = -SalePrice)
+a = feat[,!(names(feat) %in% c(feat$GrLivArea, feat$TotalBsmtSF))]
+library(gplots)
+heatmap.2(cor(a), Rowv = FALSE, Colv = FALSE, dendrogram = "none",
+          cellnote = round(cor(a),2),
+          notecol = "grey", key = FALSE, trace = 'none', margins = c(7,7), main = "binary variables heatmap")
+
+
+```
+Correlation among the data of a set gives us closer or similar predictions, which is not very suitable, so in the code below, we manually remove 3 of the features that have a higher correlation with themselves or with a large number of other features. Finally, we connected the set of final-feat  and target and named the final collection final-df that the data in this collection are our main features and from now on We use this collection for modeling.
+```{r}
+targ = subset(high_cor_semfin, select = SalePrice)
+final_feat = select(feat, -c("GrLivArea", "TotalBsmtSF", "GarageYrBlt"))
+final_df = cbind(targ, final_feat)
+```
+
+\vspace*{2cm}
+
+### 2.2 Variables description
+Finally, we have got 10 features and from now on we will work on these 10 features to model our data.
+```{r}
+dim(final_df)
+names(final_df)
+```
+there is a description of variables of the dataset:
+
+1- SalePrice - the property's sale price in dollars. This is the target variable that you're trying to predict.
+
+2- OverallQual: Overall material and finish quality.
+
+3- GarageArea: Size of garage in square feet.
+
+4- 1stFlrSF: First Floor square feet.
+
+5- TotRmsAbvGrd: Total rooms above grade (does not include bathrooms)
+
+6- YearBuilt: Original construction date.
+
+7- Fireplaces: Number of fireplaces.
+
+8- YearRemodAdd: Remodel date.
+
+9- MasVnrArea: Masonry veneer area in square feet.
+
+10-HeatingQC: Heating quality and condition
+
+\vspace*{2cm}
+
+Now we will show the summary of these selected features to analyze.
+```{r}
+summary(final_df)
+```
+
+Overall, the summary provides statistical measures such as minimum, maximum, mean, median, and quartiles for each variable, allowing for a basic understanding of the distribution and range of values in the dataset.
+\vspace*{2cm}
+
+
+### 2.3 Exploratory Data Analysis (visualization)
+We drew histograms and boxplots for all the data and describe them below:
+```{r}
+attach(final_df)
+#due to zero values we didn't use log transformation along with the fact that our models worked well without the transformation
+hist(final_df$SalePrice, xlab = "SalePrice", main = "Histogram of the response variable")
+boxplot(SalePrice, xlab = "SalePrice" )
+
+```
+
+
+according to histogram of sellprice, we can see the right-skewed and also with boxplot, we can see that the data has the outlayers.
+Next, we do some work on the data so that we can delete outlayers.
+
+
+```{r}
+hist(final_df$OverallQual, xlab = "OverallQual", main = "Histogram of OverallQual")
+boxplot(OverallQual, xlab = "OverallQual" )
+
+```
+
+
+The OrallQual data was one of the categorical data that we converted into a number. Now we can see that its histogram is almost bell-shaped and only one outlier can be seen in its boxplot.
+
+
+```{r}
+hist(final_df$GarageArea, xlab = "GarageArea", main = "Histogram of GarageArea")
+boxplot(GarageArea, xlab = "GarageArea" )
+```
+
+
+we can see the right-skewed in its histogram and also with boxplot, we can see that the data has a lot of outlayers.
+
+```{r}
+hist(final_df$X1stFlrSF, xlab = "X1stFlrSF", main = "Histogram of X1stFlrSF")
+boxplot(X1stFlrSF, xlab = "X1stFlrSF" )
+
+```
+Histograms and boxplots show a right-skewed distribution that shows the abundance of lower values and the scarcity of higher values in the data. Additionally, the boxplot highlights the presence of multiple outliers that affect the skewness of the distribution.
+```{r}
+hist(final_df$TotRmsAbvGrd, xlab = "TotRmsAbvGrd", main = "Histogram of TotRmsAbvGrd")
+boxplot(TotRmsAbvGrd, xlab = "TotRmsAbvGrd" )
+
+```
+
+
+The histogram and boxplot show that the data is skewed to the right, meaning there are more lower values and fewer higher values.in the boxplot, We can also observe three outliers in the data.
+
+```{r}
+hist(final_df$YearBuilt, xlab = "YearBuilt", main = "Histogram of YearBuilt")
+boxplot(YearBuilt, xlab = "YearBuilt" )
+
+```
+
+
+According to the histogram of the data of the yearbuild , we can see that the number of houses is increasing over time, that is, in fact, in 1880, almost 5 houses were built, but in 2000, the largest number of houses, which is almost 300, was built.So we have the left-skewed and autlayers in histogram and boxplot respectively.
+
+
+
+```{r}
+hist(final_df$FireplaceQu, xlab = "FireplaceQu", main = "Histogram of FireplaceQu")
+boxplot(FireplaceQu, xlab = "FireplaceQu" )
+
+```
+
+with regard to the fireplace histogram, it can be seen that most houses have only one fireplace, and the number of houses with 2, 3, and 6 fireplaces are less than other types. Also, we do not have any outliers in the boxplots.
+
+```{r}
+hist(final_df$YearRemodAdd, xlab = "YearRemodAdd", main = "Histogram of YearRemodAdd")
+boxplot(YearRemodAdd, xlab = "YearRemodAdd" )
+```
+
+In this section, we can find out in which year the most remodeling was done and in which year the least amount of remodeling was done. For example, it can be seen in the graph that between 1980 and 1985, the number of houses in which remodeling was done was less than all the years. is. On the other hand, we can see that the most remodeling was done in 2000.
+
+```{r}
+hist(final_df$MasVnrArea, xlab = "MasVnrArea", main = "Histogram of MasVnrArea")
+boxplot(MasVnrArea, xlab = "MasVnrArea" )
+
+```
+
+It can be seen that the histogramof the area of the house has a positive skewness. And we can see that the number of houses with the infrastructure between 100 and 150 meters is more than other  Masonry veneer area.
+
+```{r}
+hist(final_df$HeatingQC, xlab = "HeatingQC", main = "Histogram of HeatingQC")
+boxplot(HeatingQC, xlab = "HeatingQC" )
+
+```
+
+
+In this histogram , the majority of houses exhibit excellent Heating quality and condition, while the houses with poor heating conditions is approximately nonexistent.
+
+
+
+According to the previous boxplots, we saw that most of the data have outliers, so we have to perform a series of works on the data to remove these outliers.
+For this purpose, we obtain the quantile of 25% and 75% , and all the data of these two quantiles are good and appropriate data, which we keep, and we delete data that are  between 0 and 25% and between 75% to 1.
+
+
+```{r}
+#given the boxplot over our untransformed data we will use iqr to process the outliers in feature TotalBsmtSF
+for (column in names(final_df)) {
+  q1 <- quantile(final_df[[column]], 0.25)
+  q3 <- quantile(final_df[[column]], 0.75)
+  iqr <- q3 - q1
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  final_df[[column]][final_df[[column]] <= lower_bound | final_df[[column]] >= upper_bound] <- mean(final_df[[column]])
+}
+```
+
+
+```{r}
+boxplot(final_df$OverallQual, final_df$GarageArea, final_df$X1stFlrSF, final_df$TotRmsAbvGrd, final_df$YearBuilt, final_df$FireplaceQu, final_df$YearRemodAdd, final_df$MasVnrArea, final_df$HeatingQC
+        ,names=c("OverallQual", "GarageArea", "X1stFlrSF", "TotRmsAbvGrd", "YearBuilt", "FireplaceQu", "YearRemodAdd", "MasVnrArea", "HeatingQC"), main="Box plot of features: YearRemodAdd ,TotalBsmtSF, OverallQual")
+boxplot(final_df$SalePrice, names = c("SalePrice"))
+```
+
+# 3 MODELS
+ 
+When interpreting a regression model, there are several key components to consider, including the coefficients, p-values, standard errors, R-squared, and the overall significance of the model. Here's a step-by-step guide on interpreting a linear regression model:
+1. Coefficients: The coefficients, also known as regression coefficients or parameter estimates, indicate the estimated change in the dependent variable for a one-unit change in the corresponding independent variable, while holding other variables constant. A positive coefficient suggests a positive relationship, while a negative coefficient suggests a negative relationship. The magnitude of the coefficient represents the size of the effect.
+2. Standard Errors: The standard errors estimate the uncertainty or variability associated with the coefficient estimates. Smaller standard errors indicate more precise estimates. They are often used to calculate confidence intervals and perform hypothesis tests.
+3. p-values: The p-values associated with the coefficients indicate the statistical significance of the relationship between each independent variable and the dependent variable. A low p-value (typically below a chosen significance level, such as 0.05) suggests that the relationship is unlikely to be due to random chance. It indicates that there is evidence of a significant association between the independent variable and the dependent variable.
+4. R-squared: R-squared (or the coefficient of determination) is a measure of how well the independent variables explain the variation in the dependent variable. It ranges from 0 to 1, with a higher value indicating a better fit. However, R-squared alone does not determine the model's validity or the importance of the predictors.
+5. Overall Significance: To assess the overall significance of the model, you can examine the F-statistic and its associated p-value. The F-statistic tests the null hypothesis that all coefficients in the model are equal to zero. A low p-value for the F-statistic suggests that the model as a whole is statistically significant.
+It is crucial to consider the context of your analysis, the specific research question, and the nature of your data when interpreting a regression model. Additionally, assumptions underlying regression analysis, such as linearity, independence, normality, and homoscedasticity, should be evaluated to ensure the validity of the results.
+It is noteworthy that some of the features in some of our models inevitably will show p-values outside of the desired range which in turn will raise doubts about their predictive validity. We should be careful when interpreting those features in said models.
+
+### 3.1 single variable models
+
+
+we  performed univariate regression first, with respect to different independent variables. We perform linear regression analysis using the lm() function in R. Fits a linear model where the dependent variable is SalePrice and the independent variable is OverallQual. The regression results are stored in the reg.out object.
+
+```{r}
+reg.out = lm(SalePrice~OverallQual)
+```
+
+In fallowing we can see summary of the linear regression model. It provides information about the coefficient, their statistical significance-of-fit measures, and other relevant statistics. 
+It gives a standard error, T value and P value for each of them. If it has correlation, it means that the variable and beta are suitable and should not be removed, and finally we have a good model.
+Another criterion of the model's goodness is Multiple Rsquared and Adjust Rsquared which is displayed by R^2. The larger this number, the better the prediction. Finally, this shows us that we have a good model.
+Here, for the reg.out model, we will see that we have R^2 = 0.6257 which indicates that this model is a moderate model.
+```{r}
+summary(reg.out)
+```
+
+In the context of regression analysis, "BIC" stands for Bayesian Information Criterion. It is a statistical measure used to evaluate and compare different regression models based on their goodness of fit and complexity. The BIC is calculated using the likelihood function and penalizes models with more parameters to prevent overfitting.
+The number "35675.35" following "BIC" represents the actual value of the BIC score for a specific regression model. Lower BIC values indicate a better trade-off between model fit and complexity, suggesting a more preferable model. Researchers often compare BIC scores among different models to select the one with the lowest value as the most suitable for their data.
+In summary, "BIC 35675.35" in the context of regression indicates the BIC score of a particular regression model, with a lower value suggesting a better fit and lower complexity.
+From now on, we will compare R2 and BIC of different models, the first one should be more and the second one should be less to get a better result.
+
+```{r}
+BIC(reg.out)
+AIC(reg.out)
+```
+
+"Par" sets the layout for the upcoming plots. mfrow specifies the number of rows and columns of plots to be displayed. In this case, it sets the layout to a 2x2 grid, indicating that four plots will be displayed.
+
+```{r}
+par(mfrow=c(2,2))
+```
+
+"Plot" creates a series of diagnostic plots for the linear regression model. The diagnostic plots include a plot of standardized residuals against fitted values, a normal Q-Q plot of residuals, a plot of residuals against the predictor variable, and a plot of Cook's distances.
+In the QQ residuals, The closer the data is to the line, the more normal the residuals are, so in this case the model has worked well.
+
+The plot of leverage points versus residuals helps identify data points that have a strong influence on the regression model. It allows you to assess whether these influential points are also influential in terms of the residuals, which represent the discrepancies between the observed and predicted values.
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.out)
+```
+
+In this section, we have High leverage and high residuals:
+Points in this quadrant have both high leverage and large residuals. These points have a substantial influence on the regression model and can potentially be outliers or represent unusual patterns in the data. It is important to carefully examine these points to determine if they are valid data or if there are any data collection or measurement issues. Also, for the QQ plot, we can see that the interval of (-2,2) quantiles are normal as they  are so close to the qqline. However, there are some variations (outliers) outside of this boundry. this indication can be also seen in other plots too in this section.
+
+
+
+
+Using the ggplot2 package, we create a scatter plot; where the x-axis should represent the SalePrice variable and the y-axis should represent the OverallQual variable. The final_df argument is the name of the data frame or data source containing the variables. In these graphs, they show us the goodness of the regression, the slope in relation to data and X, etc.
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = OverallQual)) + geom_point() + stat_smooth(method = "lm", formula = y ~ x) + labs(x = 'SalePrice', y = 'OverallQual')
+```
+
+In the following, we will also perform univariate linear regression on other variable and we compare BIC and R^2 of diffrent models.
+
+we will also perform univariate linear regression on GarageArea and we can see the BIC = 36391.42 and R^2 = 0.3887
+Due to the fact that the BIC has increased and Residual-squared has decreased, so this model is better than the previous model
+
+
+```{r}
+reg.out1 = lm(SalePrice~GarageArea)
+summary(reg.out1)
+BIC(reg.out1)
+AIC(reg.out1)
+par(mfrow=c(2,2))
+plot(reg.out1)
+```
+
+In this section, we have High leverage and low residual: Points in this quadrant have high leverage, meaning they have extreme predictor values, but their corresponding residuals are relatively close to zero. These points can have a significant impact on the estimated regression coefficients but are consistent with the overall trend of the data.
+
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = GarageArea)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'GarageArea')
+```
+
+We will also conduct a univariate linear regression analysis on the variable X1stFlrSF.
+for this variable, BIC is 36442.13 and R^2 is 0.3671
+
+Compared to the first model, this model is a better model because the BIC is more than the first model and the residual-squared is less than the first model. But it is almost the same as the second model and not much has changed.
+```{r}
+reg.out2 = lm(SalePrice~X1stFlrSF)
+summary(reg.out2)
+BIC(reg.out2)
+par(mfrow=c(2,2))
+plot(reg.out2)
+```
+
+In this section, we observe data points with high leverage and low residuals. These points have extreme predictor values, but their residuals are relatively small, indicating that they align well with the overall trend of the data. Although they can exert a considerable influence on the estimated regression coefficients, they remain consistent with the overall pattern observed in the dataset. The qqplot: Deviations from a straight line suggest departures show some outliers may exist.
+
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = X1stFlrSF)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'X1stFlrSF ')
+```
+
+In the previous parts, we used to fit the linear regression on the variable itself. In this part, we want to do the fitting on the logarithm of the data to find out whether fitting on the data itself is better or fitting on the logarithm of the data.
+
+```{r}
+reg.out2prime = lm(SalePrice~ log(X1stFlrSF))
+summary(reg.out2prime)
+BIC(reg.out2prime)
+par(mfrow=c(2,2))
+plot(reg.out2prime)
+```
+
+In this section, we observe data points with high leverage and large residuals. These points possess considerable influence on the regression model and may indicate outliers or represent unconventional patterns within the data. It is crucial to thoroughly examine these points to ascertain their validity, considering factors such as potential data collection or measurement issues.
+
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = X1stFlrSF)) +geom_point() + stat_smooth(method = "lm", formula = y ~ x) +labs(x = 'SalePrice', y = 'X1stFlrSF')
+```
+
+We will also conduct a univariate linear regression analysis on the variable TotRmsAbvGrd.
+
+for this variable, BIC is 36620.4 and R^2 is 0.2849
+And also BIC and R^2 are 36652.16 And 0.2691 respectively for logarithm of this data. both of them are better than all of the previous models.
+
+```{r}
+reg.out3 = lm(SalePrice~TotRmsAbvGrd)
+summary(reg.out3)
+BIC(reg.out3)
+AIC(reg.out3)
+par(mfrow=c(2,2))
+plot(reg.out3)
+```
+
+In this section, we can see data points with high leverage and low residuals. These points exhibit extreme predictor values, but their residuals are relatively small, suggesting a close alignment with the overall trend observed in the data. Although these points can have a notable impact on the estimated regression coefficients, they are consistent with the overall pattern present in the dataset.
+
+```{r}
+reg.out3pri = lm(SalePrice~ log(TotRmsAbvGrd))
+reg.out3prime = na.omit(reg.out3pri)
+summary(reg.out3prime)
+BIC(reg.out3prime)
+AIC(reg.out3prime)
+par(mfrow=c(2,2))
+plot(reg.out3prime)
+```
+
+High leverage, high residual points belong to the quadrant where they exhibit both high leverage and large residuals. These data points hold considerable influence over the regression model and may indicate the presence of outliers or represent atypical patterns within the data. It becomes crucial to thoroughly investigate these points to determine their validity and ascertain whether any data collection or measurement issues are at play. Understanding the nature of these points is essential in order to make informed decisions about their inclusion or exclusion in the analysis and to ensure the integrity of the regression model.
+
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = TotRmsAbvGrd)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'TotRmsAbvGrd')
+
+```
+
+We will perform a univariate linear regression analysis on the variable YearBuilt and also logarithm of this.
+
+For the variable YearBuilt, the univariate linear regression model yields a BIC of 36643.57and an R-squared value of 0.2734. However, when considering the logarithm of the data, the BIC improves to 36648.43, while the R-squared value increases to 0.271.
+
+```{r}
+reg.out4 = lm(SalePrice~YearBuilt)
+summary(reg.out4)
+BIC(reg.out4)
+AIC(reg.out4)
+par(mfrow=c(2,2))
+plot(reg.out4)
+```
+
+```{r}
+reg.out4prime = lm(SalePrice ~log(YearBuilt))
+summary(reg.out4prime)
+BIC(reg.out4prime)
+AIC(reg.out4prime)
+par(mfrow=c(2,2))
+plot(reg.out4prime)
+```
+
+In both of the plots, we can identify data points with high leverage and great residuals. These points have a notable impact on the regression model and could potentially indicate outliers or unconventional patterns within the data. It is essential to carefully investigate these points to determine their validity, taking into account factors such as possible issues with data collection or measurement.
+
+In the fallowing, we plot ggplot of both YearBuilt and log(YearBuilt):
+
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = YearBuilt)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'YearBuilt')
+```
+
+```{r}
+ggplot(final_df, aes(x = SalePrice, y = log(YearBuilt))) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'YearBuilt')
+
+
+```
+
+We will conduct a univariate linear regression analysis on the variable FireplaceQu, as well as its logarithm, to explore their relationships with the dependent variable.
+
+For the variable FireplaceQu, the univariate linear regression model produces a BIC of 36648.71 and an R-squared value of 0.2709. However, when applying a logarithmic transformation to the data, the BIC improves to 36648.43, and the R-squared value increases to 0.2561. These findings suggest that utilizing the logarithm of the data slightly enhances the model's fit and explanatory power compared to the original untransformed data.
+
+```{r}
+reg.out5 = lm(SalePrice~FireplaceQu)
+summary(reg.out5)
+BIC(reg.out5)
+AIC(reg.out5)
+par(mfrow=c(2,2))
+plot(reg.out5)
+```
+
+
+```{r}
+reg.out5prime = lm(SalePrice~ log(FireplaceQu))
+summary(reg.out5prime)
+BIC(reg.out4prime)
+par(mfrow=c(2,2))
+plot(reg.out4prime)
+```
+
+We will also perform a univariate linear regression analysis on the variable YearRemodAdd, examining its impact on the dependent variable. Additionally, we will apply the analysis on the logarithm of the YearRemodAdd variable.
+
+For this variable, the BIC value is 36675.9 and the R-squared value is 0.2572. When we apply a logarithmic transformation to the data, the BIC improves to 36676.4 and the R-squared value increases to 0.2569. These results indicate that using the logarithm enhances the model's performance, resulting in better fit and increased explanatory power compared to the original data.
+
+```{r}
+reg.out6 = lm(SalePrice~YearRemodAdd)
+summary(reg.out6)
+BIC(reg.out6)
+par(mfrow=c(2,2))
+plot(reg.out6)
+```
+
+
+```{r}
+reg.out6prime = lm(SalePrice~ log(YearRemodAdd))
+summary(reg.out6prime)
+BIC(reg.out6prime)
+par(mfrow=c(2,2))
+plot(reg.out6prime)
+
+```
+
+We will perform a univariate linear regression analysis on the variable MasVnrArea to examine its relationship with the dependent variable.
+for this variable, BIC is 36736.15 and R^2 is 0.2259
+
+```{r}
+reg.out7 = lm(SalePrice~MasVnrArea)
+summary(reg.out7)
+BIC(reg.out7)
+par(mfrow=c(2,2))
+plot(reg.out7)
+
+```
+
+High leverage, low residual points fall into the quadrant where they exhibit high leverage due to their extreme predictor values, yet their corresponding residuals are relatively close to zero. These data points possess the potential to exert a substantial influence on the estimated regression coefficients while remaining consistent with the overall trend observed in the data.
+
+
+
+We will also apply a univariate linear regression analysis on the variable HeatingQC, exploring its influence on the dependent variable in our analysis.
+for this variable, BIC is 36815.02 and R^2 is 0.1829.
+
+```{r}
+reg.out8 = lm(SalePrice~HeatingQC)
+summary(reg.out8)
+BIC(reg.out8)
+par(mfrow=c(2,2))
+plot(reg.out8)
+
+```
+
+Finally, we concluded that the fit to the data is much better than the fit to the logarithm of the data.
+
+### 3.2 multivariate models
+
+#### 3.2.1 multi-General model
+
+None of these single variable models seems good. let's combine more variabled models.
+
+So far we have used univariate models, from now on we want to use multivariate models. we are fitting multiple linear regression models using different subsets of variables or predictor combinations. Each model is evaluated using summary statistics such as coefficients, standard errors, p-values, and BIC (Bayesian Information Criterion).
+
+At first, we received the name of the data and the number of data. we set the random seed to ensure reproducibility.
+
+```{r}
+colnames(final_df)
+length(colnames(final_df))
+set.seed(1)
+```
+
+we create a vector called train that contains a random sample of 80% of the row indices of final_df and also create a vector called test that contains the indices do not present in train.
+```{r}
+train = sample(1:nrow(final_df), nrow(final_df)*0.80)
+test = (-train)
+```
+
+we fit a linear regression model with SalePrice as the dependent variable and all other variables in data.reg as predictors using the rows specified by the train vector.
+After that we provide a summary of the fitted model, including coefficient estimates, standard errors, t-values, and p-values and calculate the Bayesian Information Criterion (BIC) for the Mult.model1 model.
+
+
+```{r}
+Mult.model1 = lm(SalePrice ~ . , data = final_df[train,])
+summary(Mult.model1)
+BIC(Mult.model1)
+```
+
+we're fitting another linear regression model using a subset of variables. We selects specific columns from data1 (like GarageArea", "OverallQual", "YearBuilt", "X1stFlrSF", "FireplaceQu"and so on) and assigns them to Mult.model2.we fit a linear regression model using SalePrice as the dependent variable and the selected columns from Mult.model2 as predictors. After that we provide a summary of the fitted model2, including coefficient estimates, standard errors, t-values, and p-values. we can perform  an analysis of variance (ANOVA) for the reg.Model2 model, which tests the significance of each predictor variable. The anova() function  produces an ANOVA table that shows the sum of squares, degrees of freedom, mean squares, and F-statistic for each predictor variable and the overall model.The ANOVA table provides several key pieces of information.
+
+"Df" represents the degrees of freedom, which indicate the number of independent pieces of information available for estimation.
+
+"Sum Sq" represents the sum of squares, which measures the amount of variability explained by each predictor or the overall model.
+
+"Mean Sq" represents the mean squares, which is the sum of squares divided by the corresponding degrees of freedom.
+
+"F value" represents the F-statistic, which is a ratio of the mean squares that tests the null hypothesis that there is no significant difference among the groups or factors.
+
+In the ANOVA table, we can examine the p-values associated with each predictor or the overall model to assess their significance. Small p-values (typically below a pre-determined significance level, such as 0.05) indicate that the corresponding predictor or the overall model is statistically significant, suggesting that it contributes significantly to explaining the variation in the dependent variable.
+
+BIC of this model is 34506.17 and R-aquared of its is 0.6957
+
+```{r}
+model2 = final_df[c("GarageArea", "OverallQual", "YearBuilt", "X1stFlrSF", "FireplaceQu", "YearRemodAdd", "TotRmsAbvGrd","HeatingQC","SalePrice")]
+Mult.model2 = lm(SalePrice~ . , data = model2)
+summary(Mult.model2)
+BIC(Mult.model2)
+par(mfrow=c(2,2))
+plot(Mult.model2)
+anova(Mult.model2)
+```
+
+Next, we're fitting a linear regression model with only two predictors that are FireplaceQu  and YearBuilt and after that with 3 predictor. And also we provided demonstrates the process of fitting multiple linear regression models with different sets of predictors and evaluating their performance using summary statistics and diagnostic plots.
+
+The Bayesian Information Criterion (BIC) for this model is calculated to be 36258.94 and  the R-squared value of this model is determined to be 0.4445
+```{r}
+Mult.model3 = lm(SalePrice ~ (FireplaceQu + YearBuilt))
+summary(Mult.model3)
+BIC(Mult.model3)
+par(mfrow = c(2,2))
+plot(Mult.model3)
+```
+
+The model under consideration exhibits a Bayesian Information Criterion (BIC) value of 35489.13 And the model achieves an R-squared value of 0.6738 R-squared
+
+```{r}
+Mult.model4 = lm(SalePrice ~ (OverallQual + YearBuilt+ GarageArea))
+summary(Mult.model4)
+BIC(Mult.model4)
+anova(Mult.model4) 
+```
+
+#### 3.2.2 Multiple Regression
+
+Now we want to use multiple regression:
+In this section, reg.Model1 is a linear regression model fitted using the lm() function. we specify that SalePrice is the dependent variable, and the predictors are OverallQual, YearBuilt, GarageArea, YearRemodAdd, and FireplaceQu. The poly() function is used to create polynomial terms for these predictors up to the second degree.
+we provide a summary of the fitted reg.Model1, including information about the coefficients, standard errors, t-values, and p-values for each predictor.
+we generate diagnostic plots for reg.Model1, including a residuals vs. fitted values plot, a normal Q-Q plot of residuals, a scale-location plot, and a residuals vs. leverage plot. These plots help assess the assumptions of the linear regression model and identify potential issues.
+In R, the poly() function is used to create orthogonal polynomial terms for regression modeling. The function takes a predictor or variable and a specified degree as input.
+
+The resulting orthogonal polynomial terms can be used as predictors in regression models to capture nonlinear relationships between predictors and the response variable. The use of orthogonal polynomials helps minimize multicollinearity issues between the polynomial terms.
+The provided code fits a multiple linear regression model with verallQual, YearBuilt, GarageArea, YearRemodAdd, FireplaceQu variable.
+
+```{r}
+
+reg.Model1 = lm(SalePrice ~ poly(OverallQual + YearBuilt + GarageArea +YearRemodAdd +FireplaceQu , degree = 2))
+summary(reg.Model1)
+par(mfrow = c(2,2))
+plot(reg.Model1)
+```
+
+We fit a multiple linear regression model with verallQual, YearBuilt, GarageArea and YearRemodAdd variable.
+```{r}
+reg.Model2 = lm(SalePrice ~ (OverallQual + YearBuilt + GarageArea +YearRemodAdd))
+summary(reg.Model2)
+BIC(reg.Model2)
+par(mfrow = c(2,2))
+plot(reg.Model2)
+```
+
+We fit a multiple linear regression model with polynomial terms on  verallQual, YearBuilt, GarageArea and YearRemodAdd variable 
+
+```{r}
+
+reg.Model3 = lm(SalePrice ~ poly(OverallQual + YearBuilt + GarageArea +YearRemodAdd, degree = 3))
+summary(reg.Model3)
+BIC(reg.Model3)
+par(mfrow = c(2,2))
+plot(reg.Model3)
+```
+
+The response variable is SalePrice, and the predictor is OverallQual. Additionally, the predictor OverallQual is included with a quadratic term using the I() function.
+
+```{r}
+reg.Model4 <- lm(SalePrice~OverallQual+I(OverallQual^2))
+summary(reg.Model4)
+BIC(reg.Model4)
+par(mfrow = c(2,2))
+plot(reg.Model4)
+```
+
+In the given regression model, the response variable is SalePrice. The model includes the predictors OverallQual and GarageArea, along with their respective quadratic terms 
+
+```{r}
+reg.Model5 = lm(SalePrice~ OverallQual+ GarageArea + I(OverallQual^2) +I(GarageArea^2))
+summary(reg.Model5)
+BIC(reg.Model5)
+par(mfrow = c(2,2))
+plot(reg.Model5)
+```
+
+The response variable is SalePrice, and the predictor variables are OverallQual and YearBuilt. Additionally, an interaction term, OverallQual * YearBuilt, is included in the model to capture the combined effect of these two predictors.
+
+```{r}
+reg.Model6 = lm(SalePrice ~ OverallQual*YearBuilt, data=final_df)
+summary(reg.Model6)
+BIC(reg.Model6)
+par(mfrow = c(2,2))
+plot(reg.Model6)
+```
+
+We fit a multiple linear regression model with polynomial terms on  overallQual, GarageArea and YearRemodAdd variable 
+
+```{r}
+reg.Model7 = lm(SalePrice~ OverallQual*YearRemodAdd*GarageArea)
+summary(reg.Model7)
+BIC(reg.Model7)
+par(mfrow = c(2,2))
+plot(reg.Model7)
+```
+
+We apply a multiple linear regression model with polynomial terms on GarageArea and YearRemodAdd variable 
+
+```{r}
+reg.Model8 = lm(SalePrice~GarageArea*YearRemodAdd)
+summary(reg.Model8)
+BIC(reg.Model8)
+par(mfrow = c(2,2))
+plot(reg.Model8)
+```
+
+
+We do this process for all variables and finally we compare R2 and BIC lines, the higher the R2, the better the model.
+
+The vif() function in the car package (Companion to Applied Regression) is used to calculate the variance inflation factor (VIF) for predictors in a linear regression model. VIF measures the extent of multicollinearity between predictors. By examining the VIF values, you can assess the extent of multicollinearity in your regression models and identify predictors that may be highly correlated with each other.
+According to our code and data, VIF gave us low numbers, which means that the variables do not have multi-collinearity, so the models and variables all give us good results.
+```{r}
+library(car)
+vif(Mult.model1)
+vif(Mult.model2)
+vif(Mult.model3)
+vif(Mult.model4)
+vif(reg.Model2)
+```
+
+For all models, we performed the anova() function
+
+We compute the analysis of variance (ANOVA) for multiple regression models. Each model is assigned to a separate variable (a1, a2, a3, ..., a21) to store the ANOVA results.
+
+By using the anova() function on each of these models, the code computes the ANOVA table for each model, providing information about the sums of squares, degrees of freedom, mean squares, and F-statistic for each predictor in the model. These ANOVA results are useful for assessing the significance of the predictors and overall model fit in each regression model.
+```{r}
+a1 = anova(reg.out)
+a2 = anova(reg.out1)
+a3 = anova(reg.out2)
+a4 = anova(reg.out3)
+a5 = anova(reg.out4)
+a6 = anova(reg.out5)
+a7 = anova(reg.out6)
+a8 = anova(reg.out7)
+a9 = anova(reg.out8)
+a10 = anova(Mult.model1)
+a11 = anova(Mult.model2)
+a12 = anova(Mult.model3)
+a13 = anova(Mult.model4)
+a14 = anova(reg.Model1)
+a15 = anova(reg.Model2)
+a16 = anova(reg.Model3)
+a17 = anova(reg.Model4)
+a18 = anova(reg.Model5)       
+a19 = anova(reg.Model6)
+a20 = anova(reg.Model7)
+a21 = anova(reg.Model8)
+```
+
+```{r}
+anovas = list(a1,a2,a3,a4,a5,a6,a7,a8,a9,a19,a13,a17,a18,a19,a20,a21)
+for (i in 1:length(anovas)) {
+  print(anovas[[i]])
+}
+```
+
+
+In the below code we evaluate the performance of the reg.out2 linear regression model by calculating the mean differences and mean squared differences between the predicted and actual values for the training and test data. In the MSE section, we have manually calculated the standard error, which we performed on both the data set and the test set.
+
+```{r}
+####MSE of reg.out2:
+Reg.pred1 = predict(reg.out2, newdata = final_df[test, ])
+lm.pred <- predict(reg.out2)
+y.train = na.omit(lm.pred[train])
+mean(lm.pred - y.train)
+mean((lm.pred - y.train)^2)
+y.test = na.omit(lm.pred[test])
+mean((Reg.pred1 - y.test)^2)
+```
+
+This is for reg.out6:
+
+```{r}
+####MSE of reg.out6:
+Reg.pred = predict(reg.out6, newdata = final_df[test, ])
+lm.pred <- predict(reg.out6)
+y.train = na.omit(lm.pred[train])
+mean(lm.pred - y.train)
+mean((lm.pred - y.train)^2)
+y.test = na.omit(lm.pred[test])
+mean((Reg.pred - y.test)^2)
+```
+
+Bartlett's test is used to test the null hypothesis, H0 that all k population variances are equal against the alternative that at least two are different.
+Test:Bartlett's K-squared: The test statistic is 207.04. This value indicates the strength of evidence against the null hypothesis of equal variances across the groups. A larger test statistic suggests stronger evidence against the null hypothesis.
+df: The degrees of freedom associated with the test statistic is 7. This value represents the number of levels of the "OverallQual" variable minus 1.
+p-value: The p-value is reported as "< 2.2e-16". This extremely small p-value indicates strong evidence against the null hypothesis of equal variances. In fact, the p-value is smaller than the conventional significance level of 0.05, suggesting very strong evidence to reject the null hypothesis.
+In summary, based on the Bartlett test, there is strong evidence to suggest that the variances of "SalePrice" differ significantly across the levels of "OverallQual." This implies that the assumption of equal variances may not hold, and it is important to consider the potential impact of this heterogeneity when analyzing the relationship between "SalePrice" and "OverallQual" in further statistical analyses.
+
+```{r}
+bartlett.test(SalePrice ~ OverallQual)
+aov(SalePrice~OverallQual)
+```
+
+In our code, we provided performs a stepwise variable selection procedure using the step() function in R. we applied forward selection to iteratively add predictors to the model based on their improvement in model fit. Additionally, we calculate the Bayesian Information Criterion (BIC) and Akaike Information Criterion (AIC) for the final_model. BIC and AIC are measures of model fit and complexity, with lower values indicating better-fitting and less complex models.
+
+First line creates an initial linear regression model (initial_model) using the lm() function. The formula SalePrice ~ 1 specifies that we want to predict the SalePrice variable using only the intercept (constant term). 
+
+```{r}
+initial_model <- lm(SalePrice ~ 1, data = final_df [,-1])
+# Perform forward selection using stepwise regression
+final_model <- step(initial_model, direction = "forward", scope = formula(lm(
+  SalePrice~ ., data = final_df [,-1])))
+```
+
+
+```{r}
+summary(final_model)
+BIC(final_model)
+AIC(final_model)
+```
+
+Assuming we have the 'final_model' object resulting from the forward selection. We extract the AIC values and the number of variables. We plot the AIC values against the number of variables. We consider all AICs and draw a plot for them, and it also returns the best AIC. In fact, AIC draws a plot that displays all models in relation to different variables.
+
+```{r}
+aic_values <-final_model$anova$AIC
+num_variables <- 1:length(aic_values)
+plot(num_variables, aic_values, xlab = "number of Variables", ylab = "AIC", type = "l")
+
+```
+# 4 COMPARING DIFFERENT MODELS
+
+single variables
+reg.out :
+R-squared:  0.6257, Adjusted R-squared:  0.6254 
+BIC:35675.35
+
+reg.out1 
+Multiple R-squared:  0.3887, Adjusted R-squared:  0.3882 
+BIC:36391.42
+
+reg.out2 = lm(SalePrice~X1stFlrSF):
+Multiple R-squared:  0.3671, Adjusted R-squared:  0.3666 
+BIC:36442.13
+
+reg.out2prime = lm(SalePrice~ log(X1stFlrSF))
+Multiple R-squared:  0.3496, Adjusted R-squared:  0.3491
+BIC:36481.87
+
+reg.out3 = lm(SalePrice~TotRmsAbvGrd)
+Multiple R-squared:  0.2849, Adjusted R-squared:  0.2844 
+BIC:36620.4
+
+reg.out3pri = lm(SalePrice~ log(TotRmsAbvGrd))
+Multiple R-squared:  0.2691, Adjusted R-squared:  0.2686 
+BIC:36652.16
+
+reg.out4 = lm(SalePrice~YearBuilt)
+Multiple R-squared:  0.2734, Adjusted R-squared:  0.2729 
+BIC:36643.57
+
+reg.out4prime = lm(SalePrice ~log(YearBuilt))
+Multiple R-squared:  0.271,  Adjusted R-squared:  0.2705
+BIC:36648.43
+
+reg.out5 = lm(SalePrice~FireplaceQu)
+Multiple R-squared:  0.2709, Adjusted R-squared:  0.2704 
+BIC:36648.71
+
+reg.out5prime = lm(SalePrice~ log(FireplaceQu))
+Multiple R-squared:  0.2561, Adjusted R-squared:  0.2555 
+BIC:36648.43
+
+reg.out6 = lm(SalePrice~YearRemodAdd)
+Multiple R-squared:  0.2572, Adjusted R-squared:  0.2566 
+BIC:36675.9
+
+reg.out6prime = lm(SalePrice~ log(YearRemodAdd))
+Multiple R-squared:  0.2569, Adjusted R-squared:  0.2564 
+BIC:36676.4
+
+reg.out7 = lm(SalePrice~MasVnrArea)
+Multiple R-squared:  0.2259, Adjusted R-squared:  0.2253 
+BIC:36736.15
+
+reg.out8 = lm(SalePrice~HeatingQC)
+Multiple R-squared:  0.1829, Adjusted R-squared:  0.1823 
+BIC:36815.02
+
+multi variables:
+Mult.model1 = lm(SalePrice ~ . , data = final_df[train,])
+Multiple R-squared:  0.7068, Adjusted R-squared:  0.7046 
+BIC:27538.52
+
+Mult.model2 = lm(SalePrice~ . , data = model2)
+Multiple R-squared:  0.6957, Adjusted R-squared:  0.694 
+BIC:34506.17
+
+Mult.model3 = lm(SalePrice ~ (FireplaceQu + YearBuilt))
+Multiple R-squared:  0.4445, Adjusted R-squared:  0.4437 
+BIC:36258.94
+
+Mult.model4 = lm(SalePrice ~ (OverallQual + YearBuilt+ GarageArea))
+Multiple R-squared:  0.6738, Adjusted R-squared:  0.6731
+BIC: 35489.13
+
+multiple regression:
+reg.Model1 = lm(SalePrice ~ poly(OverallQual + YearBuilt + GarageArea +YearRemodAdd +FireplaceQu , degree = 2))
+Multiple R-squared:  0.4625, Adjusted R-squared:  0.4618
+
+reg.Model2 = lm(SalePrice ~ (OverallQual + YearBuilt + GarageArea +YearRemodAdd))
+Multiple R-squared:  0.677,  Adjusted R-squared:  0.6761 
+BIC: 35481.96
+
+reg.Model3 = lm(SalePrice ~ poly(OverallQual + YearBuilt + GarageArea +YearRemodAdd, degree = 3))
+Multiple R-squared:  0.4858, Adjusted R-squared:  0.4848 
+BIC: 36153.24
+
+reg.Model4 <- lm(SalePrice~OverallQual+I(OverallQual^2))
+Multiple R-squared:  0.6785, Adjusted R-squared:  0.678 
+BIC: 35460.67
+
+reg.Model5 = lm(SalePrice~ OverallQual+ GarageArea + I(OverallQual^2) +I(GarageArea^2))
+Multiple R-squared:  0.7136, Adjusted R-squared:  0.7129 
+BIC: 35305.98
+
+reg.Model6 = lm(SalePrice ~ OverallQual*YearBuilt, data=final_df)
+Multiple R-squared:  0.5673, Adjusted R-squared:  0.5664 
+BIC: 34983.74
+
+reg.Model7 = lm(SalePrice~ OverallQual*YearRemodAdd*GarageArea)
+Multiple R-squared:  0.7142, Adjusted R-squared:  0.7128 
+BIC: 35324.98
+
+reg.Model8 = lm(SalePrice~GarageArea*YearRemodAdd)
+Multiple R-squared:  0.5226, Adjusted R-squared:  0.5216 
+BIC: 36045.07
+
+# 5 CONCLUSION
+
+we see :
+```{r}
+summary(Mult.model1)
+AIC(Mult.model1)
+BIC(Mult.model1)
+
+```
+
+and Also with respect to the feedforward selection:
+
+```{r}
+summary(final_model)
+AIC(final_model)
+BIC(final_model)
+```
+
+```{r}
+par(mfrow=c(2,2))
+ggplot(final_df [-1], aes(x = SalePrice, y = OverallQual+ X1stFlrSF + GarageArea + FireplaceQu + YearRemodAdd + TotRmsAbvGrd + HeatingQC + YearBuilt+MasVnrArea)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'Mult.model1')
+
+ggplot(final_df [-1], aes(x = SalePrice, y = OverallQual + X1stFlrSF + GarageArea + FireplaceQu + YearRemodAdd + TotRmsAbvGrd + HeatingQC + YearBuilt)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  labs(x = 'SalePrice', y = 'finalmodel')
+```
+
+These are the best regression models with the best AIC, BIC, and R-squared values. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
